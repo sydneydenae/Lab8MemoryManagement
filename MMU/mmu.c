@@ -191,7 +191,45 @@ void deallocate_memory(list_t * alloclist, list_t * freelist, int pid, int polic
     * 3. set the blk.pid back to 0
     * 4. add the blk back to the FREE_LIST based on policy.
     */
-    
+    node_t *cur_node = alloclist->head;
+    node_t *prev_node = NULL;
+
+    // Search for the block allocated to the given pid
+    while (cur_node != NULL && cur_node->blk->pid != pid) {
+        prev_node = cur_node;
+        cur_node = cur_node->next;
+    }
+
+    if (cur_node == NULL) {
+        printf("Error: Cannot find memory allocated for PID: %d\n", pid);
+        return;
+    }
+
+    // Remove the found block from the allocated list
+    if (prev_node == NULL) {
+        alloclist->head = cur_node->next;
+    } else {
+        prev_node->next = cur_node->next;
+    }
+
+    // Mark the block as free (set its pid to 0)
+    cur_node->blk->pid = 0;
+
+    // Insert the freed block back into the freelist according to the policy
+    if (policy == 1) { // First Fit (FIFO)
+        list_add_to_back(freelist, cur_node->blk);
+    } else if (policy == 2) { // Best Fit
+        list_add_ascending_by_blocksize(freelist, cur_node->blk);
+    } else if (policy == 3) { // Worst Fit
+        list_add_descending_by_blocksize(freelist, cur_node->blk);
+    } else {
+        printf("Error: Invalid Memory Management Policy\n");
+        // In case of an unknown policy, default to FIFO
+        list_add_to_back(freelist, cur_node->blk);
+    }
+
+    // Free the node itself (do not free the block as it's now in the freelist)
+    free(cur_node);
 }
 
 list_t* coalese_memory(list_t * list){
